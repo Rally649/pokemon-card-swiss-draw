@@ -1,0 +1,284 @@
+<html>
+<head>
+<title>ポケカ用スイスドロー簡易集計ツール</title>
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<style>
+	h1 {
+		white-space: nowrap;
+	}
+	ol {
+		padding-inline-start: 1.5rem;
+	}
+	.box {
+		display: flex;
+		align-items: center;
+	}
+	.wrappable {
+		flex-wrap: wrap;
+	}
+	.row {
+		text-align: center;
+	}
+	.row-index {
+		width: 2rem;
+	}
+	.name {
+		width: 10.5rem;
+	}
+	.winning-and-losing {
+		width: 4.5rem;
+	}
+	.side-number-name {
+		width: 6rem;
+	}
+	.side-number {
+		width: 3rem;
+	}
+	.game-number {
+		width: 1.5rem;
+	}
+	.game-result {
+		width: 3rem;
+	}
+	#score-table > thead > tr {
+		background: rgba(0, 0, 0, .08);
+	}
+	#score-table > tbody > tr:nth-child(even)  {
+		background: rgba(0, 0, 0, .08);
+	}
+</style>
+<script>
+	let rows = [];
+	
+	window.onload = function(){
+		let NUMBER_OF_ROWS = 32;
+		
+		let scoreTable = document.querySelector('#score-table > tbody');
+		
+		for(let rowIndex = 1; rowIndex <= NUMBER_OF_ROWS; rowIndex++){
+			function createElement(name, ...classList){
+				let element = document.createElement(name);
+				classList.forEach(clazz => element.classList.add(clazz));
+				return element;
+			}
+			
+			function appendChildren(parent, ...children){
+				children.forEach(child => parent.appendChild(child));
+			}
+			
+			let row = createElement('tr', 'row');
+			
+			let indexColumn = createElement('td');
+			indexColumn.innerText = rowIndex;
+			
+			let dataColumn = createElement('td');
+			
+			let data = createElement('div', 'box', 'wrappable');
+			
+			let name = createElement('input', 'name');
+			name.placeholder = 'name';
+			
+			let score = createElement('div', 'box', 'wrappable');
+			
+			let total = createElement('div', 'box');
+			
+			let winningAndLosing = createElement('div', 'winning-and-losing');
+			winningAndLosing.innerText = '0勝0敗'
+			
+			let winningSidesOfTotal = createElement('div', 'side-number');
+			winningSidesOfTotal.innerText = 0;
+			
+			let losingSidesOfTotal = createElement('div', 'side-number');
+			losingSidesOfTotal.innerText = 0;
+			
+			let result = createElement('div');
+			
+			let games = [];
+			let numberOfGames = Math.ceil(Math.log2(NUMBER_OF_ROWS));
+			for(let gameIndex = 1; gameIndex <= numberOfGames; gameIndex++){
+				function appendOptions(select, ...values){
+					values.map(value => {
+						let option = createElement('option');
+						option.innerText = value;
+						select.appendChild(option);
+					});
+				}
+				
+				function updateWinningAndLosing(){
+					let selects = games.map(game => game.result.value);
+					let numberOfWinning = selects.filter(select => select == '○').length;
+					let numberOfLosing = selects.filter(select => select == '×').length;
+					winningAndLosing.innerText = numberOfWinning + '勝' + numberOfLosing + '敗';
+				}
+				
+				function updateSides(property, sidesOfTotal){
+					let selects = games.map(game => Number(game[property].value));
+					sidesOfTotal.innerText = selects.reduce((pre, cur) => pre + cur);
+				}
+				
+				function updateWinningSides(){
+					updateSides('winningSides', winningSidesOfTotal);
+				}
+				
+				function updateLosingSides(){
+					updateSides('losingSides', losingSidesOfTotal);
+				}
+				
+				let game = createElement('div', 'box');
+				
+				let gameNumber = createElement('div', 'game-number');
+				gameNumber.innerText = gameIndex;
+				
+				let gameResult = createElement('select', 'game-result');
+				appendOptions(gameResult,'-', '○', '×');
+				gameResult.onchange = updateWinningAndLosing;
+				
+				let winningSides = createElement('select', 'side-number');
+				appendOptions(winningSides, ...Array(7).keys());
+				winningSides.onchange = updateWinningSides;
+				
+				let losingSides = createElement('select', 'side-number');
+				appendOptions(losingSides, ...Array(7).keys());
+				losingSides.onchange = updateLosingSides;
+				
+				appendChildren(game, gameNumber, gameResult, winningSides, losingSides);
+				appendChildren(result, game);
+				
+				games.push({result: gameResult, winningSides, losingSides});
+			}
+			
+			scoreTable.appendChild(row);
+			appendChildren(row, indexColumn, dataColumn);
+			appendChildren(dataColumn, data);
+			appendChildren(data, name, score);
+			appendChildren(score, total, result);
+			appendChildren(total, winningAndLosing, winningSidesOfTotal, losingSidesOfTotal);
+			
+			rows.push({name, winningAndLosing, winningSidesOfTotal, losingSidesOfTotal, games});
+		}
+	}
+	
+	function copyRows(){
+		let copiedRows = rows.map(row => {
+			let copiedRow = {
+				name : row.name.value,
+				winningAndLosing : row.winningAndLosing.innerText,
+				winningSidesOfTotal : row.winningSidesOfTotal.innerText,
+				losingSidesOfTotal : row.losingSidesOfTotal.innerText,
+				games : row.games.map(game => {
+					let copiedGame = {
+						result : game.result.value,
+						winningSides : game.winningSides.value,
+						losingSides : game.losingSides.value
+					};
+					return copiedGame;
+				})
+			};
+			return copiedRow;
+		});
+		return copiedRows;
+	}
+	
+	function writeRows(newRows){
+		rows.forEach((row, i) => {
+			let newRow = newRows[i];
+			row.name.value = newRow.name;
+			row.winningAndLosing.innerText = newRow.winningAndLosing;
+			row.winningSidesOfTotal.innerText = newRow.winningSidesOfTotal,
+			row.losingSidesOfTotal.innerText = newRow.losingSidesOfTotal,
+			row.games.forEach((game, j) => {
+				let newGame = newRow.games[j];
+				game.result.value = newGame.result;
+				game.winningSides.value = newGame.winningSides;
+				game.losingSides.value = newGame.losingSides;
+			});
+		});
+	}
+	
+	function shuffle(){
+		let copiedRows = copyRows();
+		let filledRows = copiedRows.filter(row => row.name != '');
+		let emptyRows = copiedRows.filter(row => row.name == '');
+		
+		let length = filledRows.length;
+		let shuffledRows = new Array(length);
+		for(let i = 0; i < length; i++){
+			let n = Math.floor(Math.random() * (i + 1));
+			shuffledRows[i] = shuffledRows[n];
+			shuffledRows[n] = filledRows[i];
+		}
+		let newRows = shuffledRows.concat(emptyRows);
+		writeRows(newRows);
+	}
+	
+	function match(){
+		function convert(row){
+			let results = row.games.map(game => game.result);
+			return results.reduce((pre, cur, index) => cur == '○' ? pre + 2 ** index : pre, 0);
+		}
+		let rows = copyRows();
+		rows.sort((a, b) => convert(b) - convert(a));
+		writeRows(rows);
+	}
+	
+	function sortByResults(){
+		function getNumberOfWinning(row){
+			let results = row.games.map(game => game.result.value);
+			return results.filter(result => result == '○');
+		}
+		let rows = copyRows();
+		rows.sort((a, b) => {
+			let numberOfWinning = getNumberOfWinning(b) - getNumberOfWinning(a);
+			let winningSides = b.winningSidesOfTotal - a.winningSidesOfTotal;
+			let losingSides = a.losingSidesOfTotal - b.losingSidesOfTotal;
+			return numberOfWinning != 0 ? numberOfWinning : winningSides != 0 ? winningSides : losingSides;
+		});
+		writeRows(rows);
+	}
+	
+</script>
+</head>
+<body>
+	<h1>
+		<div class="box wrappable">
+			<div>ポケカ用スイスドロー</div>
+			<div>簡易集計ツール</div>
+		</div>
+	</h1>
+	
+	<ol>
+		<li>参加者の名前を入力。</li>
+		<li>「シャッフル」を押下し、1と2、3と4といった具合に試合を実施。</li>
+		<li>一回戦の終了後にスコアシートを入力、「勝敗数順」を押下し二回戦を実施。これを繰り返す。</li>
+		<li>全試合の終了後に「成績順」を押下し、勝ち数・取得サイド数・喪失サイド数の順で並び替える。</li>
+	</ol>
+	
+	<button onclick="shuffle()">シャッフル</button>
+	<button onclick="match()">勝敗数順</button>
+	<button onclick="sortByResults()">成績順</button>
+	
+	<table id="score-table">
+		<thead>
+			<tr class="row">
+				<th class="row-index"></th>
+				<th>
+					<div class="box wrappable">
+						<div class="name"></div>
+						<div class="box wrappable">
+							<div class="winning-and-losing"></div>
+							<div class="side-number-name">サイド合計</div>
+							<div class="box">
+								<div class="game-number"></div>
+								<div class="game-result">勝敗</div>
+								<div class="side-number-name">サイド得失</div>
+							</div>
+						</div>
+					</div>
+				</th>
+			</tr>
+		</thead>
+		<tbody>
+		</tbody>
+	</table>
+</body>
+</html>
